@@ -5,7 +5,7 @@ session_start();
 require_once __DIR__ . '/../vendor/autoload.php';
 
 require_once __DIR__ . '/../src/Core/Database.php';
-require_once __DIR__ . '/../src/Core/Csrf.php';
+require_once __DIR__ . '/../src/Core/CSRF.php';
 require_once __DIR__ . '/../src/Core/Middleware.php';
 require_once __DIR__ . '/../src/Core/Captcha.php';
 
@@ -18,7 +18,7 @@ require_once __DIR__ . '/../src/Validator/MoodEntryValidator.php';
 require_once __DIR__ . '/../src/Service/AuthService.php';
 require_once __DIR__ . '/../src/Service/MoodEntryFormHandler.php';
 
-require_once __DIR__ . '/../src/helpers.php';
+require_once __DIR__ . '/../src/Helpers.php';
 
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;

@@ -1,15 +1,24 @@
 <?php
 
-/**
- * Конфигурация подключения к базе данных PostgreSQL.
- */
+$envPath = __DIR__ . '/.env';
+
+if (!is_file($envPath)) {
+    throw new RuntimeException('Файл .env не найден.');
+}
+
+$env = parse_ini_file($envPath, false, INI_SCANNER_RAW);
+
+if ($env === false) {
+    throw new RuntimeException('Не удалось прочитать файл .env.');
+}
+
 return [
     'db' => [
-        'host' => 'localhost',
-        'port' => 5432,
-        'dbname' => 'phplabdb',
-        'user' => 'postgres',
-        'password' => 'postgres',
-        'charset' => 'utf8',
+        'host' => $env['DB_HOST'],
+        'port' => (int)$env['DB_PORT'],
+        'dbname' => $env['DB_NAME'],
+        'user' => $env['DB_USER'],
+        'password' => $env['DB_PASSWORD'],
+        'charset' => $env['DB_CHARSET'] ?? 'utf8',
     ],
 ];
