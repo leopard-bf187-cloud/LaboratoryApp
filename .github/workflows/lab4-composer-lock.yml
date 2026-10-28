@@ -1,0 +1,36 @@
+name: Build lab4 Composer lock
+on:
+  push:
+    branches:
+      - feat/cloud-lab4-s3-attachments
+    paths:
+      - .github/workflows/lab4-composer-lock.yml
+      - composer.json
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/cloud-lab4-s3-attachments
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+      - name: Update lock for known installed versions
+        run: |
+          composer update 'aws/aws-sdk-php:3.402.2' 'twig/twig:3.30.0' --with-all-dependencies --no-interaction --no-progress --prefer-dist
+          composer validate --strict
+          composer audit
+      - name: Commit Composer lock file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add composer.lock
+          if ! git diff --cached --quiet; then
+            git commit -m "build: lock AWS SDK 3.402.2 and Twig 3.30.0"
+            git push origin HEAD:feat/cloud-lab4-s3-attachments
+          fi
