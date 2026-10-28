@@ -71,12 +71,13 @@ final class AttachmentRepository
 
     public function findAccessible(int $id, int $userId, bool $isAdmin): ?array
     {
-        $statement = $this->pdo->prepare('
-            SELECT a.* FROM entry_attachments a
-            INNER JOIN entries e ON e.id = a.entry_id
-            WHERE a.id = :id AND (:is_admin = 1 OR e.user_id = :user_id)
-        ');
-        $statement->execute([':id' => $id, ':is_admin' => $isAdmin ? 1 : 0, ':user_id' => $userId]);
+        $scope = $isAdmin ? '' : ' AND e.user_id = :user_id';
+        $statement = $this->pdo->prepare('SELECT a.* FROM entry_attachments a INNER JOIN entries e ON e.id = a.entry_id WHERE a.id = :id' . $scope);
+        $parameters = [':id' => $id];
+        if (!$isAdmin) {
+            $parameters[':user_id'] = $userId;
+        }
+        $statement->execute($parameters);
 
         return $statement->fetch() ?: null;
     }
