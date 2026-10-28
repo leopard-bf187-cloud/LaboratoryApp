@@ -48,6 +48,7 @@
             <th>Теги</th>
             <th>Заметка</th>
             <th>Автор</th>
+            <th>Вложения</th>
             {% if is_admin %}
                 <th>Пользователь</th>
             {% endif %}
@@ -66,6 +67,7 @@
                 <td>{{ entry.tags|join(', ') }}</td>
                 <td>{{ entry.note }}</td>
                 <td>{{ entry.author }}</td>
+                <td>{% for attachment in attachments_by_entry[entry.id]|default([]) %}<a href="index.php?page=attachment_download&id={{ attachment.id }}">{{ attachment.original_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</td>
 
                 {% if is_admin %}
                     <td>{{ entry.username }}</td>

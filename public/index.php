@@ -17,6 +17,8 @@ require_once __DIR__ . '/../src/Validator/MoodEntryValidator.php';
 
 require_once __DIR__ . '/../src/Service/AuthService.php';
 require_once __DIR__ . '/../src/Service/MoodEntryFormHandler.php';
+require_once __DIR__ . '/../src/Repository/AttachmentRepository.php';
+require_once __DIR__ . '/../src/Service/AttachmentStorage.php';
 
 require_once __DIR__ . '/../src/Helpers.php';
 
@@ -28,6 +30,34 @@ $pdo = Database::getConnection();
 
 $userRepository = new UserRepository($pdo);
 $entryRepository = new MoodEntryRepository($pdo);
+$attachmentRepository = new AttachmentRepository($pdo);
+$storageConfig = parse_ini_file(__DIR__ . '/../.env', false, INI_SCANNER_RAW);
+$attachmentStorage = null;
+
+function getAttachmentStorage(): AttachmentStorage
+{
+    global $attachmentStorage, $storageConfig;
+    if ($attachmentStorage === null) {
+        $attachmentStorage = new AttachmentStorage((string)($storageConfig['S3_BUCKET'] ?? ''), (string)($storageConfig['AWS_REGION'] ?? ''));
+    }
+    return $attachmentStorage;
+}
+
+function attachUploadedFile(int $entryId, AttachmentRepository $repository): void
+{
+    $upload = AttachmentStorage::validateUpload($_FILES['attachment'] ?? null);
+    if ($upload === null) {
+        return;
+    }
+    $data = getAttachmentStorage()->upload($upload);
+    try {
+        $repository->create($entryId, $data);
+    } catch (Throwable $error) {
+        getAttachmentStorage()->delete($data['object_key']);
+        throw $error;
+    }
+}
+
 
 $authService = new AuthService(
     $userRepository,
@@ -225,6 +255,7 @@ switch ($page) {
 
         echo $twig->render('entries/list.twig', array_merge(baseViewData(), [
             'entries' => $entries,
+            'attachments_by_entry' => $attachmentRepository->findByEntryIds($entries),
             'sort' => $sortField,
             'order' => $order,
             'query' => $query,
@@ -255,6 +286,13 @@ switch ($page) {
         $result = $entryFormHandler->create(Middleware::userId(), $_POST);
 
         if ($result['success']) {
+            try {
+                attachUploadedFile((int)$result['id'], $attachmentRepository);
+            } catch (Throwable $error) {
+                error_log((string)$error);
+                echo $twig->render('entries/form.twig', array_merge(baseViewData(), ['mode' => 'edit', 'action' => 'index.php?page=update&id=' . $result['id'], 'entry' => $_POST, 'attachments' => [], 'moods' => $entryRepository->getAllMoods(), 'errors' => ['Запись сохранена, но вложение загрузить не удалось. Повторите загрузку при редактировании записи.']]));
+                break;
+            }
             redirect('index.php?page=list');
         }
 
@@ -288,9 +326,36 @@ switch ($page) {
             'mode' => 'edit',
             'action' => 'index.php?page=update&id=' . $id,
             'entry' => $entry,
+            'attachments' => $attachmentRepository->findByEntryId($id),
             'moods' => $entryRepository->getAllMoods(),
             'errors' => [],
         ]));
+        break;
+
+    case 'attachment_download':
+        Middleware::requireAuth();
+        $attachment = $attachmentRepository->findAccessible((int)($_GET['id'] ?? 0), Middleware::userId(), Middleware::isAdmin());
+        if (!$attachment) {
+            http_response_code(404);
+            echo 'Вложение не найдено.';
+            break;
+        }
+        header('Location: ' . getAttachmentStorage()->createDownloadUrl($attachment), true, 302);
+        exit;
+
+    case 'attachment_delete':
+        Middleware::requireAuth();
+        if (!isPost()) {
+            http_response_code(405);
+            break;
+        }
+        requireValidCsrf();
+        $attachment = $attachmentRepository->findAccessible((int)($_POST['id'] ?? 0), Middleware::userId(), Middleware::isAdmin());
+        if ($attachment) {
+            getAttachmentStorage()->delete($attachment['object_key']);
+            $attachmentRepository->delete((int)$attachment['id']);
+        }
+        redirect('index.php?page=edit&id=' . (int)($attachment['entry_id'] ?? 0));
         break;
 
     case 'update':
@@ -312,6 +377,13 @@ switch ($page) {
         );
 
         if ($result['success']) {
+            try {
+                attachUploadedFile($id, $attachmentRepository);
+            } catch (Throwable $error) {
+                error_log((string)$error);
+                echo $twig->render('entries/form.twig', array_merge(baseViewData(), ['mode' => 'edit', 'action' => 'index.php?page=update&id=' . $id, 'entry' => $_POST, 'attachments' => $attachmentRepository->findByEntryId($id), 'moods' => $entryRepository->getAllMoods(), 'errors' => ['Изменения сохранены, но вложение загрузить не удалось.']]));
+                break;
+            }
             redirect('index.php?page=list');
         }
 
@@ -336,10 +408,17 @@ switch ($page) {
         $id = (int)($_POST['id'] ?? 0);
 
         if ($id > 0) {
-            if (Middleware::isAdmin()) {
-                $entryRepository->deleteRecord($id);
-            } else {
-                $entryRepository->deleteRecordByUserId($id, Middleware::userId());
+            $entry = Middleware::isAdmin() ? $entryRepository->getRecordById($id) : $entryRepository->getRecordByIdAndUserId($id, Middleware::userId());
+            if ($entry) {
+                $attachments = $attachmentRepository->findByEntryId($id);
+                foreach ($attachments as $attachment) {
+                    getAttachmentStorage()->delete($attachment['object_key']);
+                }
+                if (Middleware::isAdmin()) {
+                    $entryRepository->deleteRecord($id);
+                } else {
+                    $entryRepository->deleteRecordByUserId($id, Middleware::userId());
+                }
             }
         }
 
