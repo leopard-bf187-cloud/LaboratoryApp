@@ -6,16 +6,6 @@
     {% else %}
         Создание записи
     {% endif %}
-{% if mode == 'edit' and attachments is defined and attachments is not empty %}
-    <h3>Удаление вложений</h3>
-    {% for attachment in attachments %}
-        <form action="index.php?page=attachment_delete" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="id" value="{{ attachment.id }}">
-            <button class="danger-button small" type="submit">Удалить {{ attachment.original_name }}</button>
-        </form>
-    {% endfor %}
-{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -163,6 +153,16 @@
         <a href="index.php?page=list" class="button-link">К списку</a>
     </div>
 </form>
+{% if mode == 'edit' and attachments is defined and attachments is not empty %}
+    <h3>Удаление вложений</h3>
+    {% for attachment in attachments %}
+        <form action="index.php?page=attachment_delete" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="id" value="{{ attachment.id }}">
+            <button class="danger-button small" type="submit">Удалить {{ attachment.original_name }}</button>
+        </form>
+    {% endfor %}
+{% endif %}
 {% endblock %}
 
 
