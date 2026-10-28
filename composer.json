@@ -1,4 +1,8 @@
 {
+    "name": "leopard-bf187-cloud/laboratoryapp",
+    "description": "Mood Diary web application for cloud computing laboratory work",
+    "type": "project",
+    "license": "proprietary",
     "require": {
         "twig/twig": "^3.24",
         "aws/aws-sdk-php": "^3.0"
