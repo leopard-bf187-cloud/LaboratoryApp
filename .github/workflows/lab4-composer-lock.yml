@@ -5,6 +5,7 @@ on:
       - feat/cloud-lab4-s3-attachments
     paths:
       - .github/workflows/lab4-composer-lock.yml
+      - composer.json
   workflow_dispatch:
 permissions:
   contents: write
