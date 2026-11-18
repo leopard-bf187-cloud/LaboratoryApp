@@ -125,6 +125,7 @@ function baseViewData(): array
 {
     return [
         'csrf_token' => Csrf::token(),
+        'served_by' => gethostname() ?: 'unknown',
         'current_user' => $_SESSION['user'] ?? null,
         'is_admin' => ($_SESSION['user']['role'] ?? '') === 'admin',
     ];
