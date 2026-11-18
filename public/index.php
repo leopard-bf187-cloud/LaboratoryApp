@@ -1,8 +1,9 @@
 <?php
 
-session_start();
-
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../src/Core/SessionStorage.php';
+
+SessionStorage::start();
 
 require_once __DIR__ . '/../src/Core/Database.php';
 require_once __DIR__ . '/../src/Core/CSRF.php';
